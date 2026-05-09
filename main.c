@@ -7,29 +7,29 @@ const char *filename = "power_quality_log.csv";
 
 int main(int argc, char *argv[]) {
 
-    /* 1. check a filename was passed on the command line */
+    
     if (argc < 2) {
         fprintf(stderr, "Usage: %s power_quality_log.csv\n", argv[0]);
         return 1;
     }
     const char *filename = argv[1];
 
-    /* 2. count rows so we know how much memory to allocate */
+
     int n = count_rows(filename);
     if (n <= 0) return 1;
     printf("Rows found: %d\n", n);
 
-    /* 3. allocate memory */
+
     waveform *samples = malloc(n * sizeof(waveform));
     if (samples == NULL) {
         fprintf(stderr, "Error: malloc failed - out of memory\n");
         return 1;
     }
 
-    /* 4. load the CSV into the array */
+
     load_csv(filename, samples, n);
 
-    /* 5. compute all metrics */
+
     double rms_A = compute_rms(samples, n, 0);
     double rms_B = compute_rms(samples, n, 1);
     double rms_C = compute_rms(samples, n, 2);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     int clip_B   = count_clipped(samples, n, 1);
     int clip_C   = count_clipped(samples, n, 2);
 
-    /* 6. print to screen */
+
     printf("--- Phase A ---\n");
     printf("  RMS Voltage : %.2f V\n", rms_A);
     printf("  Status      : %s\n", check_compliance(rms_A) ? "COMPLIANT" : "OUT OF TOLERANCE");
@@ -68,11 +68,11 @@ int main(int argc, char *argv[]) {
     printf("  DC Offset   : %.4f V\n", dc_C);
     printf("  Clipped     : %d samples\n\n", clip_C);
 
-    /* 7. write results.txt */
+
     write_results("results.txt", samples, n);
     printf("\nResults written to results.txt\n");
 
-    /* 8. free memory before exit */
+
     free(samples);
     samples = NULL;
     return 0;
