@@ -5,4 +5,5 @@ set(CMAKE_C_STANDARD 99)
 
 add_executable(attempt2 main.c
         waveform.c
-        io.c)
+        io.c
+        waveform.h)
