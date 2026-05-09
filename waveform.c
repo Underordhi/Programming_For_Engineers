@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "waveform.h"
 
 
@@ -23,9 +24,7 @@ int count_rows(const char *data) {
     return count;
 }
 
-int count_rows(const char *data);
-void load_csv(const char *data, waveform *samples, int n);
-double compute_rms(waveform *samples, int n);
+
 
 void load_csv(const char *data, waveform *samples, int n) {
     FILE *fp = fopen(data, "r");
@@ -46,14 +45,23 @@ void load_csv(const char *data, waveform *samples, int n) {
     fclose(fp);
 }
 
-double compute_rms(waveform *samples, int n) {
+static double get_voltage(waveform *s, int phase) {
+    if (phase == 0) return s->phase_A_voltage;
+    if (phase == 1) return s->phase_B_voltage;
+    return s->phase_C_voltage;
+}
+
+double compute_rms(waveform *samples, int n, int phase) {
     double sum_sq = 0.0;
-    for (int i = 0; i < n; i++) {
-        sum_sq += samples[i].phase_A_voltage * samples[i].phase_A_voltage;
+    waveform*ptr = samples;
+    waveform *end = samples + n;
+    while (ptr < end) {
+        double v = get_voltage(ptr, phase);
+        sum_sq += v * v;
+        ptr++;
     }
     return sqrt(sum_sq / n);
 }
-
 
 int main(void) {
     const char *data = "power_quality_log.csv";
@@ -77,10 +85,13 @@ int main(void) {
     load_csv(data, samples, n);
 
 
-    double rms_A = compute_rms(samples, n);
+    double rms_A = compute_rms(samples, n, 0);
+    double rms_B = compute_rms(samples, n, 1);
+    double rms_C = compute_rms(samples, n, 2);
+
     printf("Phase A RMS: %.2f V\n", rms_A);
-
-
+    printf("Phase B RMS: %.2f V\n", rms_B);
+    printf("Phase C RMS: %.2f V\n", rms_C);
     free(samples);
     samples = NULL;
 

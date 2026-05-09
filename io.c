@@ -1,6 +1,7 @@
 #include "io.h"
 #include <stdio.h>
-
+#include <stdlib.h>
+#include "waveform.h"
 int folder() {
     FILE *fp = fopen("input.txt", "r");
     if (fp == NULL) {
