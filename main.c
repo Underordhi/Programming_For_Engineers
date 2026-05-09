@@ -3,6 +3,8 @@
 #include "io.h"
 #include <stdlib.h>
 
+const char *filename = "power_quality_log.csv";
+
 int main(int argc, char *argv[]) {
 
     /* 1. check a filename was passed on the command line */
