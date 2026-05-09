@@ -3,25 +3,10 @@
 #include <math.h>
 #include "waveform.h"
 
-
-void load_csv(const char *data, waveform *samples, int n) {
-    FILE *fp = fopen(data, "r");
-    char line[512];
-    fgets(line, sizeof(line), fp);
-
-    for (int i = 0; i < n; i++) {
-        fscanf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",
-            &samples[i].timestamp,
-            &samples[i].phase_A_voltage,
-            &samples[i].phase_B_voltage,
-            &samples[i].phase_C_voltage,
-            &samples[i].line_current,
-            &samples[i].frequency,
-            &samples[i].power_factor,
-            &samples[i].thd_percent);
-    }
-    fclose(fp);
-}
+/* -------------------------------------------------------
+   phase 0 = A, 1 = B, 2 = C
+   'static' means it can only be used inside this file
+   ------------------------------------------------------- */
 
 static double get_voltage(waveform *s, int phase) {
     if (phase == 0) return s->phase_A_voltage;
@@ -41,37 +26,56 @@ double compute_rms(waveform *samples, int n, int phase) {
     return sqrt(sum_sq / n);
 }
 
-int main(void) {
-    const char *data = "power_quality_log.csv";
 
-    /* --- 1. count rows --- */
-    int n = count_rows(data);
-    if (n <= 0) {
-        fprintf(stderr, "Error: no data rows found.\n");
-        return 1;
+/* -------------------------------------------------------
+   PEAK-TO-PEAK
+   Highest sample minus lowest sample
+   ------------------------------------------------------- */
+double compute_peak_to_peak(waveform *samples, int n, int phase) {
+    double vmax = get_voltage(samples, phase);
+    double vmin = vmax;
+    waveform *ptr = samples + 1;
+    while (ptr < samples + n) {
+        double v = get_voltage(ptr, phase);
+        if (v > vmax) vmax = v;
+        if (v < vmin) vmin = v;
+        ptr++;
     }
-    printf("Rows found: %d\n", n);
+    return vmax - vmin;
+}
 
 
-    waveform *samples = malloc(n * sizeof(waveform));
-    if (samples == NULL) {
-        fprintf(stderr, "Error: malloc failed — out of memory.\n");
-        return 1;
+double compute_dc_offset(waveform *samples, int n, int phase) {
+    double sum = 0.0;
+    waveform *ptr = samples;
+    while (ptr < samples + n) {
+        sum += get_voltage(ptr, phase);
+        ptr++;
     }
+    return sum / n;
+}
 
+/* -------------------------------------------------------
+   CLIPPING DETECTION
+   Counts samples where |voltage| >= 324.9 V (sensor limit)
+   ------------------------------------------------------- */
+int count_clipped(waveform *samples, int n, int phase) {
+    int count = 0;
+    waveform *ptr = samples;
+    while (ptr < samples + n) {
+        double v = get_voltage(ptr, phase);
+        if (v < 0) v = -v;        /* make it positive (absolute value) */
+        if (v >= 324.9) count++;
+        ptr++;
+    }
+    return count;
+}
 
-    load_csv(data, samples, n);
-
-
-    double rms_A = compute_rms(samples, n, 0);
-    double rms_B = compute_rms(samples, n, 1);
-    double rms_C = compute_rms(samples, n, 2);
-
-    printf("Phase A RMS: %.2f V\n", rms_A);
-    printf("Phase B RMS: %.2f V\n", rms_B);
-    printf("Phase C RMS: %.2f V\n", rms_C);
-    free(samples);
-    samples = NULL;
-
-    return 0;
+/* -------------------------------------------------------
+   TOLERANCE COMPLIANCE
+   Checks that RMS is within ±10% of 230V
+   Returns 1 (pass) or 0 (fail)
+   ------------------------------------------------------- */
+int check_compliance(double rms) {
+    return (rms >= 207.0 && rms <= 253.0);
 }
