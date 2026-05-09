@@ -4,28 +4,6 @@
 #include "waveform.h"
 
 
-int count_rows(const char *data) {
-    FILE *fp = fopen(data, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "Error: could not open %s\n", data);
-        return -1;
-    }
-
-    int count = 0;
-    char line[256];
-
-    fgets(line, sizeof(line), fp);   /* skip the header row */
-
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        count++;
-    }
-
-    fclose(fp);
-    return count;
-}
-
-
-
 void load_csv(const char *data, waveform *samples, int n) {
     FILE *fp = fopen(data, "r");
     char line[512];
